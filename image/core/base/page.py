@@ -1,98 +1,107 @@
 """Módulo de Página Base - Simples e robusto."""
 from kivy.uix.boxlayout import BoxLayout
-from kivy.graphics import Color, Rectangle, RoundedRectangle
+from kivy.graphics import Color, Rectangle
 from kivy.app import App
 
 
 class Page(BoxLayout):
-    """Classe base para páginas com gerenciamento automático de fundo e barra de status."""
+    """Classe base para páginas."""
     
     def __init__(self, bg_color=(1, 1, 1, 1), bg_image=None, reset_timer_on_touch=True, **kwargs):
-        """Inicializa a página com cor de fundo ou imagem (padrão: branco)."""
+        """Inicializa a página."""
         super().__init__(orientation='vertical', **kwargs)
         self.bg_color = bg_color
         self.bg_image_path = bg_image
         self.reset_timer_on_touch = reset_timer_on_touch
         
         self._draw_background()
-        self._draw_status_bar_indicator()
         
-        # Registra evento de toque global se habilitado
+        # Registra evento de toque
         if self.reset_timer_on_touch:
             self.bind(on_touch_down=self._handle_touch)
             
     def _draw_background(self):
-        """Desenha o fundo (imagem ou cor sólida)."""
+        """Desenha o fundo."""
         if self.bg_image_path:
-            # Usa imagem de fundo
             with self.canvas.before:
                 self.bg_rect = Rectangle(source=self.bg_image_path, size=self.size, pos=self.pos)
             self.bind(size=self._update_bg, pos=self._update_bg)
         else:
-            # Usa cor sólida
             with self.canvas.before:
                 Color(*self.bg_color)
                 self.bg_rect = Rectangle(size=self.size, pos=self.pos)
             self.bind(size=self._update_bg, pos=self._update_bg)
             
-    def _draw_status_bar_indicator(self):
-        """Desenha o indicador da barra de status no topo."""
-        with self.canvas.after:
-            # Barra semi-transparente no topo
-            Color(1, 1, 1, 0.3)
-            self.status_bar = RoundedRectangle(size=(40, 4), pos=(0, 0), radius=[2])
-            
-        self.bind(size=self._update_status_bar, pos=self._update_status_bar)
-        
     def _update_bg(self, *args):
-        """Atualiza geometria do fundo."""
+        """Atualiza fundo."""
         self.bg_rect.size = self.size
         self.bg_rect.pos = self.pos
-        
-    def _update_status_bar(self, *args):
-        """Atualiza posição da barra de status (centralizada no topo)."""
-        self.status_bar.size = (40, 4)
-        self.status_bar.pos = (self.center_x - 20, self.top - 10)
     
     def _handle_touch(self, instance, touch):
-        """Reseta o timer de inatividade ao tocar."""
+        """Reseta timer."""
         app = App.get_running_app()
         if hasattr(app, 'manager'):
             app.manager.reset_inactivity_timer()
-        # Propaga o evento para widgets filhos
         return False
         
     def on_touch_down(self, touch):
-        """Captura início do toque para detectar swipe da barra de status."""
-        # Se o toque for no topo da tela (últimos 10% ou 30px)
-        if touch.y > self.height * 0.9:
+        """Detecta início do toque."""
+        touch.ud['start_x'] = touch.x
+        touch.ud['start_y'] = touch.y
+        
+        # Detecta toque no topo para processos
+        if touch.y > self.height - 30:
             touch.ud['status_bar_drag'] = True
-            touch.ud['start_y'] = touch.y
             
         return super().on_touch_down(touch)
         
     def on_touch_up(self, touch):
-        """Detecta swipe down da barra de status."""
-        if touch.ud.get('status_bar_drag'):
+        """Detecta swipes."""
+        if 'start_x' in touch.ud and 'start_y' in touch.ud:
             dy = touch.ud['start_y'] - touch.y
+            dx = touch.x - touch.ud['start_x']
             
-            # Swipe para baixo (> 30px)
-            if dy > 30:
+            # Swipe Down (Processos)
+            if touch.ud.get('status_bar_drag') and dy > 30:
                 self._open_processes_app()
+                return True
+            
+            # Swipe Right (Quick Settings)
+            if dx > 50 and abs(dy) < 50:
+                self._open_quick_settings()
+                return True
+                
+            # Swipe Left (Drop)
+            if dx < -50 and abs(dy) < 50:
+                self._open_drop()
                 return True
                 
         return super().on_touch_up(touch)
         
     def _open_processes_app(self):
-        """Abre o app de processos."""
+        """Abre app de processos."""
         print("→ Abrindo Processos (Swipe Down)")
         app = App.get_running_app()
         if hasattr(app, 'app_loader'):
-            # Tenta lançar o app de processos
-            # Primeiro verifica se já está carregado, senão carrega
-            success = app.app_loader.launch_app('processes_app')
-            if not success:
-                print("Erro ao abrir app de processos")
+            app.app_loader.launch_app('processes_app')
+    
+    def _open_quick_settings(self):
+        """Abre quick settings."""
+        print("→ Abrindo Quick Settings (Swipe Right)")
+        app = App.get_running_app()
+        if hasattr(app, 'nav'):
+            # Usa 'current' para verificar a tela atual
+            if app.nav.current != 'quick_settings':
+                app.nav.go('quick_settings', direction='left')
+                
+    def _open_drop(self):
+        """Abre página Drop."""
+        print("→ Abrindo Drop (Swipe Left)")
+        app = App.get_running_app()
+        if hasattr(app, 'nav'):
+            # Usa 'current' para verificar a tela atual
+            if app.nav.current == 'interactive_home':
+                app.nav.go('drop', direction='right')
     
     def on_show(self):
         """Hook chamado quando a página é exibida."""
