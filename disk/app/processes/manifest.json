@@ -1,0 +1,7 @@
+{
+    "id": "processes_app",
+    "name": "Processos",
+    "icon": "memory",
+    "entry_point": "main.py",
+    "class_name": "ProcessesPage"
+}

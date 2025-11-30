@@ -1,0 +1,7 @@
+{
+    "id": "storage_app",
+    "name": "Armazenamento",
+    "icon": "harddisk",
+    "entry_point": "main.py",
+    "class_name": "StoragePage"
+}

@@ -1,0 +1,7 @@
+{
+    "id": "demo_app",
+    "name": "Demo App",
+    "icon": "rocket-launch",
+    "entry_point": "main.py",
+    "class_name": "MainPage"
+}
